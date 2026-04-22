@@ -1,28 +1,41 @@
 [bits 16]
 [org 0x7c00]
 
-; Define some constants
-KERNEL_OFFSET equ 0x1000
+STAGE2_OFFSET equ 0x7e00
 
 start:
+    ; Initialize segment registers
+    xor ax, ax
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+    mov fs, ax
+    mov gs, ax
+
     mov [BOOT_DRIVE], dl ; BIOS stores boot drive in dl
 
     mov bp, 0x9000       ; Set up the stack
     mov sp, bp
 
-    mov bx, MSG_REAL_MODE
+    mov bx, MSG_STAGE1
     call print_string
 
-    ; In a real OS, we would load Stage 2 here
-    ; call load_kernel
-    
-    jmp $                ; Hang
+    ; Load Stage 2 from disk (sector 2)
+    mov bx, STAGE2_OFFSET
+    mov dh, 1            ; Read 1 sector (Stage 2)
+    mov dl, [BOOT_DRIVE]
+    mov cl, 0x02         ; Sector 2
+    call disk_load
+
+    ; Jump to Stage 2
+    jmp STAGE2_OFFSET
 
 %include "src/boot/print_string.asm"
+%include "src/boot/disk_load.asm"
 
 ; Data
-BOOT_DRIVE      db 0
-MSG_REAL_MODE   db "Started in 16-bit Real Mode", 0
+BOOT_DRIVE db 0
+MSG_STAGE1 db "Stage 1 Loaded. Jumping to Stage 2...", 0
 
 ; Padding and magic number
 times 510-($-$$) db 0
