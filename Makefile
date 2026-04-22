@@ -37,8 +37,8 @@ boot.bin: src/boot/stage1.asm
 
 stage2.bin: src/boot/stage2.asm
 	$(AS) $< -f bin -o $@
-	# Ensure stage2 is at least 512 bytes
-	truncate -s %512 $@
+	# Ensure stage2 is exactly 1024 bytes (2 sectors)
+	truncate -s 1024 $@
 
 kernel.bin: kernel_entry.o $(KERNEL_OBJS)
 	$(LD) -o $@ $(LDFLAGS) $^

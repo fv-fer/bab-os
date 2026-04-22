@@ -1,6 +1,8 @@
 [bits 16]
 [org 0x7e00]
 
+VBE_INFO_BLOCK equ 0x8000 ; Address to store VBE information
+
 stage2_start:
     mov [BOOT_DRIVE], dl ; Save boot drive from dl
 
@@ -12,10 +14,32 @@ stage2_start:
     mov bx, MSG_STAGE2
     call print_string
 
+    ; --- VESA/VBE Initialization ---
+    ; Get VBE Mode Info for 1024x768x32bpp (Mode 0x4118)
+    ; 0x4000 bit means use Linear Frame Buffer
+    mov ax, 0x4F01
+    mov cx, 0x4118
+    mov di, VBE_INFO_BLOCK
+    int 0x10
+    cmp ax, 0x004F
+    jne vbe_error
+
+    ; Set VBE Mode
+    mov ax, 0x4F02
+    mov bx, 0x4118 | 0x4000 ; mode | LFB bit
+    int 0x10
+    cmp ax, 0x004F
+    jne vbe_error
+
     call load_kernel     ; Load kernel from disk
     call switch_to_pm    ; Switch to 32-bit Protected Mode
     
     jmp $                ; Never reached
+
+vbe_error:
+    mov bx, MSG_VBE_ERROR
+    call print_string
+    jmp $
 
 %include "src/boot/print_string.asm"
 %include "src/boot/disk_load.asm"
@@ -30,7 +54,7 @@ load_kernel:
     mov bx, 0x1000        ; KERNEL_OFFSET
     mov dh, 15            ; Read 15 sectors
     mov dl, [BOOT_DRIVE]
-    mov cl, 0x03          ; Sector 3
+    mov cl, 0x04          ; Sector 4 (Stage 1=1, Stage 2=2&3)
     call disk_load
     ret
 
@@ -43,3 +67,4 @@ BEGIN_PM:
 BOOT_DRIVE      db 0
 MSG_STAGE2      db "Entered Stage 2 (16-bit)", 0
 MSG_LOAD_KERNEL db "Loading kernel...", 0
+MSG_VBE_ERROR   db "VBE Error!", 0

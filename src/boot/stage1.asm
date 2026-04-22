@@ -22,7 +22,7 @@ start:
 
     ; Load Stage 2 from disk (sector 2)
     mov bx, STAGE2_OFFSET
-    mov dh, 1            ; Read 1 sector (Stage 2)
+    mov dh, 2            ; Read 2 sectors (Stage 2)
     mov dl, [BOOT_DRIVE]
     mov cl, 0x02         ; Sector 2
     call disk_load
