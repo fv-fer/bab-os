@@ -39,27 +39,43 @@ struct vbe_mode_info {
     uint8_t reserved1[206];
 } __attribute__((packed));
 
+void put_pixel(struct vbe_mode_info* vbe, int x, int y, uint32_t color) {
+    // 1. Calculate the starting byte of the specific pixel.
+    // We use 'vbe->pitch' for the Y math and 'bpp/8' for the X math.
+    uint8_t* pixel_ptr = (uint8_t*)vbe->framebuffer + (y * vbe->pitch) + (x * (vbe->bpp / 8));
+
+    if (vbe->bpp == 32) {
+        // 32-bit mode is easy: just cast to a 32-bit pointer and write
+        *((uint32_t*)pixel_ptr) = color;
+    } 
+    else if (vbe->bpp == 24) {
+        // 24-bit mode: We must write 3 individual bytes.
+        // Standard VESA order is Blue, Green, Red (BGR)
+        pixel_ptr[0] = (color & 0xFF);         // Blue component
+        pixel_ptr[1] = (color >> 8) & 0xFF;    // Green component
+        pixel_ptr[2] = (color >> 16) & 0xFF;   // Red component
+    }
+}
+
 void kmain() {
     struct vbe_mode_info* vbe = (struct vbe_mode_info*) 0x8000;
-    uint32_t* framebuffer = (uint32_t*) vbe->framebuffer;
-    uint16_t width = vbe->width;
-    uint16_t height = vbe->height;
+    
+    // Safety check: Is the framebuffer address even valid?
+    if (vbe->framebuffer == 0) return;
 
-    // Fill the screen with Blue (ARGB: 0xFF0000FF)
-    for (uint32_t i = 0; i < width * height; i++) {
-        framebuffer[i] = 0x000000FF;
+    // Clear screen using the dynamic function
+    for (int y = 0; y < vbe->height; y++) {
+        for (int x = 0; x < vbe->width; x++) {
+            put_pixel(vbe, x, y, 0x000000FF); // Fill Blue
+        }
     }
-
-    // Draw a small Red square in the middle
-    int centerX = width / 2;
-    int centerY = height / 2;
-    int size = 50;
-    for (int y = centerY - size; y < centerY + size; y++) {
-        for (int x = centerX - size; x < centerX + size; x++) {
-            framebuffer[y * width + x] = 0x00FF0000;
+    
+    // Draw the Red square
+    for (int y = 300; y < 400; y++) {
+        for (int x = 300; x < 400; x++) {
+            put_pixel(vbe, x, y, 0x00FF0000); // Draw Red
         }
     }
 
     while(1);
 }
-
