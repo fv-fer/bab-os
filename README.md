@@ -1,73 +1,72 @@
 # bab-os
 
-A custom x86 operating system built from the ground up, featuring a manual 16-bit bootloader and a C-based kernel with direct hardware access.
+A custom x86 operating system built from the ground up, featuring a multi-stage bootloader and a graphical C-based kernel.
+
+## Current Capabilities
+- **Multi-Stage Bootloader**: Loads from MBR (Stage 1) to a larger Stage 2.
+- **VESA/VBE Graphics**: Switches hardware into 1024x768x32bpp high-resolution mode.
+- **Graphic Console**: A custom font renderer and terminal driver that allows structured text output on a pixel-based framebuffer.
+- **32-bit Protected Mode**: Robust kernel entry via a dedicated assembly bridge.
 
 ## Project Structure
 
-The project is organized into a modular hierarchy to keep the bootloader, kernel logic, and hardware drivers separate and maintainable.
-
 ```text
 /
-├── Makefile                # The build orchestrator (Assembles, Compiles, Links)
-├── linker.ld               # Memory layout definition (Links kernel at 0x1000)
+├── Makefile                # Build orchestrator (Assembles, Compiles, Links, Pads)
+├── linker.ld               # Memory layout (Kernel at 0x1000)
+├── include/                # Header files
+│   ├── font.h              # Bitmap font definitions
+│   └── terminal.h          # Graphic console interface
 ├── src/
 │   ├── boot/               # Custom Bootloader (Assembly)
-│   │   ├── stage1.asm      # The 512-byte MBR boot sector
-│   │   ├── print_string.asm # 16-bit BIOS print utility
-│   │   └── kernel_entry.asm # The bridge between ASM and C
+│   │   ├── stage1.asm      # MBR boot sector (loads Stage 2)
+│   │   ├── stage2.asm      # VESA initialization & Kernel loader
+│   │   ├── disk_load.asm   # BIOS disk I/O utility
+│   │   ├── gdt.asm         # Global Descriptor Table setup
+│   │   ├── switch_to_pm.asm # 16-bit to 32-bit transition
+│   │   └── kernel_entry.asm # Bridge to C kmain()
 │   ├── kernel/             # Core Kernel Source
-│   │   ├── main.c          # kmain() entry point & VGA driver logic
-│   │   ├── arch/           # Architecture specific (GDT, IDT, Paging)
-│   │   ├── drivers/        # Hardware drivers (Keyboard, Disk)
-│   │   ├── mm/             # Memory Management (PMM, VMM)
-│   │   ├── sys/            # Multitasking, Scheduling & Syscalls
-│   │   └── fs/             # File System implementations (FAT)
-│   ├── common/             # Minimal C library (libk)
-│   └── include/            # Global header files
-└── scripts/                # Image creation and deployment scripts
+│   │   ├── main.c          # kmain() & High-level logic
+│   │   ├── font.c          # 8x8 bitmap font data
+│   │   └── terminal.c      # Graphic terminal driver (pixels to text)
+└── README.md
 ```
 
 ## How It Works
 
-1.  **Stage 1 Bootloader**: When the PC starts, the BIOS loads the first 512 bytes (`stage1.asm`) into memory at `0x7C00` and executes it.
-2.  **Kernel Handoff**: The bootloader is responsible for loading the rest of the OS from the disk into memory (currently set to `0x1000`) and switching the CPU from 16-bit Real Mode to 32-bit Protected Mode.
-3.  **Kernel Entry**: `kernel_entry.asm` calls the `kmain()` function in your C code.
-4.  **VGA Driver**: Since there is no standard library, `main.c` communicates with the screen by writing directly to the video memory at `0xB8000`.
+1.  **Stage 1 (MBR)**: BIOS loads `stage1.asm` at `0x7C00`. It initializes segments and loads **Stage 2** from the disk (Sectors 2-3) into `0x7E00`.
+2.  **Stage 2**:
+    *   Queries the BIOS for VESA/VBE information.
+    *   Sets the video mode to **1024x768x32bpp**.
+    *   Saves the **Linear Framebuffer (LFB)** address at `0x8000`.
+    *   Loads the Kernel from the disk (Sector 4 onwards) into `0x1000`.
+    *   Switches to **32-bit Protected Mode**.
+3.  **Kernel Entry**: `kernel_entry.asm` executes, setting up the final stack and calling `kmain()`.
+4.  **Graphic Terminal**: The kernel reads the VBE info from `0x8000` and uses the `terminal.c` driver to render text by drawing font bitmaps directly onto the LFB pixels.
 
 ## Prerequisites
 
-To build and run this OS, you need the following tools installed on your system:
-
--   **NASM**: The Netwide Assembler for the bootloader.
--   **i686-elf-gcc**: A cross-compiler (to ensure the OS doesn't use host system headers).
--   **GNU Binutils**: (`i686-elf-ld`) for linking the kernel.
--   **QEMU**: For emulating the x86 hardware.
+- **NASM**: The Netwide Assembler.
+- **i686-elf-gcc**: A cross-compiler (to avoid host headers/PIE/SSP).
+- **GNU Binutils**: (`i686-elf-ld`) for linking.
+- **QEMU**: For emulation.
+- **Truncate**: (Standard on Linux) for disk image padding.
 
 ## Getting Started
 
-### 1. Initialize the Environment
-Ensure your cross-compiler is in your system `PATH`. You can verify this by running:
-```bash
-i686-elf-gcc --version
-nasm -v
-```
-
-### 2. Build the OS Image
-Run the following command to assemble the bootloader, compile the kernel, and create the bootable image:
+### 1. Build the OS Image
 ```bash
 make
 ```
-This generates `os-image.bin`, which is a concatenation of the bootloader and the kernel.
+This generates `os-image.bin`, which is padded to 20 sectors to ensure the BIOS read operations succeed.
 
-### 3. Run the OS
-Use QEMU to boot the image:
+### 2. Run the OS
 ```bash
 make run
 ```
-You should see "Started in 16-bit Real Mode" briefly (via BIOS) and then "Hello" printed on the screen (via your C VGA driver).
+You should see a dark blue screen with green and white text rendered via the graphical terminal driver.
 
-### 4. Cleanup
-To remove generated binaries and object files:
+### 3. Cleanup
 ```bash
 make clean
 ```

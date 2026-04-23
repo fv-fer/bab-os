@@ -11,7 +11,8 @@ LD = i686-elf-ld
 # -fno-stack-protector: Disable stack canaries (requires runtime support we don't have)
 # -fno-pie: Disable Position Independent Executable (we need fixed memory addresses)
 # -mno-sse: Disable SSE instructions (requires extra CPU setup/init)
-CFLAGS = -ffreestanding -m32 -g -fno-stack-protector -fno-pie -mno-sse
+# -Iinclude: Add the include directory to the header search path
+CFLAGS = -ffreestanding -m32 -g -fno-stack-protector -fno-pie -mno-sse -Iinclude
 
 # LDFLAGS:
 # -T linker.ld: Use our linker script to map memory (e.g., kernel at 0x1000)
@@ -20,7 +21,7 @@ CFLAGS = -ffreestanding -m32 -g -fno-stack-protector -fno-pie -mno-sse
 LDFLAGS = -T linker.ld --oformat binary -nostdlib
 
 # Files
-KERNEL_SRCS = src/kernel/main.c
+KERNEL_SRCS = src/kernel/main.c src/kernel/font.c src/kernel/terminal.c
 KERNEL_OBJS = $(KERNEL_SRCS:.c=.o)
 
 .PHONY: all clean run
