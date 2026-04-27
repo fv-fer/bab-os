@@ -60,7 +60,7 @@ void kmain() {
     terminal_writestring("Welcome to your new OS!");
 
     // Test exception (division by zero)
-    // int i = 1 / 0;
+    //     int i = 1 / 0;
 
     while(1);
 }

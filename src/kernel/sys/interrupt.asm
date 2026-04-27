@@ -1,6 +1,7 @@
 [bits 32]
 
 extern isr_handler
+extern irq_handler
 
 ; Macro for ISRs that don't push an error code (we push a dummy 0)
 %macro ISR_NOERRCODE 1
@@ -17,6 +18,15 @@ global isr%1
 isr%1:
     push %1
     jmp isr_common_stub
+%endmacro
+
+; Macro for IRQs
+%macro IRQ 2
+global irq%1
+irq%1:
+    push 0
+    push %2
+    jmp irq_common_stub
 %endmacro
 
 ; Define ISRs
@@ -53,29 +63,74 @@ ISR_NOERRCODE 29
 ISR_NOERRCODE 30
 ISR_NOERRCODE 31
 
+; Define IRQs
+IRQ 0, 32
+IRQ 1, 33
+IRQ 2, 34
+IRQ 3, 35
+IRQ 4, 36
+IRQ 5, 37
+IRQ 6, 38
+IRQ 7, 39
+IRQ 8, 40
+IRQ 9, 41
+IRQ 10, 42
+IRQ 11, 43
+IRQ 12, 44
+IRQ 13, 45
+IRQ 14, 46
+IRQ 15, 47
+
 ; Common ISR stub
 isr_common_stub:
-    pusha                    ; Pushes edi, esi, ebp, esp, ebx, edx, ecx, eax
+    pusha
 
-    mov ax, ds               ; Lower 16-bits of eax = ds.
-    push eax                 ; Save the data segment descriptor
+    mov ax, ds
+    push eax
 
-    mov ax, 0x10             ; Load the kernel data segment descriptor
+    mov ax, 0x10
     mov ds, ax
     mov es, ax
     mov fs, ax
     mov gs, ax
 
-    push esp                 ; Push a pointer to the registers_t struct
+    push esp
     call isr_handler
     add esp, 4
 
-    pop eax                  ; Reload the original data segment descriptor
+    pop eax
     mov ds, ax
     mov es, ax
     mov fs, ax
     mov gs, ax
 
-    popa                     ; Pops edi, esi, ebp, ...
-    add esp, 8               ; Cleans up the pushed error code and pushed ISR number
-    iret                     ; pops 5 things at once: CS, EIP, EFLAGS, SS, and ESP
+    popa
+    add esp, 8
+    iret
+
+; Common IRQ stub
+irq_common_stub:
+    pusha
+
+    mov ax, ds
+    push eax
+
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+
+    push esp
+    call irq_handler
+    add esp, 4
+
+    pop eax
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+
+    popa
+    add esp, 8
+    iret
