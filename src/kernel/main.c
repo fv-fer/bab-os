@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <terminal.h>
+#include <gdt.h>
 
 // VBE Mode Info Structure
 struct vbe_mode_info {
@@ -39,6 +40,8 @@ struct vbe_mode_info {
 } __attribute__((packed));
 
 void kmain() {
+    gdt_init();
+
     struct vbe_mode_info* vbe = (struct vbe_mode_info*) 0x8000;
     
     // Initialize the terminal with VBE info

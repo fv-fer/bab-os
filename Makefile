@@ -21,8 +21,8 @@ CFLAGS = -ffreestanding -m32 -g -fno-stack-protector -fno-pie -mno-sse -Iinclude
 LDFLAGS = -T linker.ld --oformat binary -nostdlib
 
 # Files
-KERNEL_SRCS = src/kernel/main.c src/kernel/font.c src/kernel/terminal.c
-KERNEL_OBJS = $(KERNEL_SRCS:.c=.o)
+KERNEL_SRCS = src/kernel/main.c src/kernel/font.c src/kernel/terminal.c src/kernel/gdt.c
+KERNEL_OBJS = $(KERNEL_SRCS:.c=.o) src/kernel/gdt_flush.o
 
 .PHONY: all clean run
 
@@ -45,6 +45,9 @@ kernel.bin: kernel_entry.o $(KERNEL_OBJS)
 	$(LD) -o $@ $(LDFLAGS) $^
 
 kernel_entry.o: src/boot/kernel_entry.asm
+	$(AS) $< -f elf -o $@
+
+src/kernel/gdt_flush.o: src/kernel/gdt_flush.asm
 	$(AS) $< -f elf -o $@
 
 %.o: %.c
