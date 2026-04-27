@@ -1,6 +1,8 @@
 #include <stdint.h>
 #include <terminal.h>
 #include <gdt.h>
+#include <idt.h>
+#include <isr.h>
 
 // VBE Mode Info Structure
 struct vbe_mode_info {
@@ -41,6 +43,8 @@ struct vbe_mode_info {
 
 void kmain() {
     gdt_init();
+    idt_init();
+    isr_install();
 
     struct vbe_mode_info* vbe = (struct vbe_mode_info*) 0x8000;
     
@@ -49,10 +53,14 @@ void kmain() {
 
     // Now we can print easily!
     terminal_writestring("Bab-OS Kernel Booting...\n");
+    terminal_writestring("GDT, IDT, and ISRs Initialized.\n");
     terminal_writestring("VBE Graphics Initialized: 1024x768x32\n");
     terminal_writestring("Terminal Driver Loaded Successfully.\n\n");
     
     terminal_writestring("Welcome to your new OS!");
+
+    // Test exception (division by zero)
+    // int i = 1 / 0;
 
     while(1);
 }

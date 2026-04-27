@@ -21,8 +21,9 @@ CFLAGS = -ffreestanding -m32 -g -fno-stack-protector -fno-pie -mno-sse -Iinclude
 LDFLAGS = -T linker.ld --oformat binary -nostdlib
 
 # Files
-KERNEL_SRCS = src/kernel/main.c src/kernel/font.c src/kernel/terminal.c src/kernel/gdt.c
-KERNEL_OBJS = $(KERNEL_SRCS:.c=.o) src/kernel/gdt_flush.o
+KERNEL_SRCS = src/kernel/main.c src/kernel/font.c src/kernel/terminal.c src/kernel/gdt.c \
+              src/kernel/sys/idt.c src/kernel/sys/isr.c src/common/string.c
+KERNEL_OBJS = $(KERNEL_SRCS:.c=.o) src/kernel/gdt_flush.o src/kernel/sys/idt_load.o src/kernel/sys/interrupt.o
 
 .PHONY: all clean run
 
@@ -50,11 +51,17 @@ kernel_entry.o: src/boot/kernel_entry.asm
 src/kernel/gdt_flush.o: src/kernel/gdt_flush.asm
 	$(AS) $< -f elf -o $@
 
+src/kernel/sys/idt_load.o: src/kernel/sys/idt_load.asm
+	$(AS) $< -f elf -o $@
+
+src/kernel/sys/interrupt.o: src/kernel/sys/interrupt.asm
+	$(AS) $< -f elf -o $@
+
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -rf *.bin *.o src/kernel/*.o src/boot/*.o
+	rm -rf *.bin *.o src/kernel/*.o src/boot/*.o src/kernel/sys/*.o src/common/*.o
 
 run: os-image.bin
 	qemu-system-i386 -drive format=raw,file=os-image.bin
