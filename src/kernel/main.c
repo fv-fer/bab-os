@@ -4,6 +4,7 @@
 #include <idt.h>
 #include <isr.h>
 #include <keyboard.h>
+#include <timer.h>
 
 // VBE Mode Info Structure
 struct vbe_mode_info {
@@ -47,6 +48,7 @@ void kmain() {
     idt_init();
     isr_install();
 
+    timer_init(100); // 100 Hz
     keyboard_init();
 
     struct vbe_mode_info* vbe = (struct vbe_mode_info*) 0x8000;
@@ -57,6 +59,7 @@ void kmain() {
     // Now we can print easily!
     terminal_writestring("Bab-OS Kernel Booting...\n");
     terminal_writestring("GDT, IDT, and ISRs Initialized.\n");
+    terminal_writestring("System Timer Initialized (100Hz).\n");
     terminal_writestring("Keyboard Driver Loaded.\n");
     terminal_writestring("VBE Graphics Initialized: 1024x768x32\n");
     terminal_writestring("Terminal Driver Loaded Successfully.\n\n");
@@ -67,6 +70,10 @@ void kmain() {
     // Enable interrupts
     __asm__ volatile("sti");
 
-    while(1);
+    while(1) {
+        /* Every 5 seconds, print a heartbeat message */
+        sleep(5000);
+        terminal_writestring("\n[System Heartbeat] 5 seconds have passed...\n> ");
+    }
 }
 
