@@ -14,7 +14,7 @@ start:
 
     mov [BOOT_DRIVE], dl ; BIOS stores boot drive in dl
 
-    mov bp, 0x9000       ; Set up the stack
+    mov bp, 0x90000      ; Set up the stack at a safer location
     mov sp, bp
 
     mov bx, MSG_STAGE1

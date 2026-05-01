@@ -52,7 +52,7 @@ load_kernel:
     call print_string
 
     mov bx, 0x1000        ; KERNEL_OFFSET
-    mov dh, 15            ; Read 15 sectors
+    mov dh, 50            ; Read 50 sectors (25KB)
     mov dl, [BOOT_DRIVE]
     mov cl, 0x04          ; Sector 4 (Stage 1=1, Stage 2=2&3)
     call disk_load
