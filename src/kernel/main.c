@@ -58,6 +58,7 @@ void kmain() {
         /* Every 5 seconds, print a heartbeat message */
         sleep(5000);
         terminal_writestring("\n[System Heartbeat] 5 seconds have passed...\n> ");
+        terminal_write("Type something: ", 17);
     }
 }
 

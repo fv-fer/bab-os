@@ -26,6 +26,10 @@ void terminal_initialize(struct vbe_mode_info* vbe) {
     terminal_clear();
 }
 
+void terminal_set_color(uint32_t color) {
+    terminal_color = color;
+}
+
 void terminal_clear() {
     for (uint32_t y = 0; y < terminal_vbe->height; y++) {
         for (uint32_t x = 0; x < terminal_vbe->width; x++) {
@@ -55,6 +59,12 @@ void terminal_putchar(char c) {
     if (terminal_column >= terminal_vbe->width - 8) {
         terminal_column = 0;
         terminal_row += 10;
+    }
+}
+
+void terminal_write(const char* data, uint32_t size) {
+    for (uint32_t i = 0; i < size; i++) {
+        terminal_putchar(data[i]);
     }
 }
 
