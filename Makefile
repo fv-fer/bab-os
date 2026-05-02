@@ -24,7 +24,7 @@ LDFLAGS = -T linker.ld --oformat binary -nostdlib
 KERNEL_SRCS = src/kernel/main.c src/kernel/font.c src/kernel/terminal.c src/kernel/gdt.c \
               src/kernel/sys/idt.c src/kernel/sys/isr.c src/common/string.c \
               src/kernel/drivers/keyboard.c src/kernel/drivers/timer.c src/kernel/drivers/pic.c \
-              src/kernel/mm/pmm.c src/kernel/mm/vmm.c
+              src/kernel/mm/pmm.c src/kernel/mm/vmm.c src/kernel/mm/kheap.c
 KERNEL_OBJS = $(KERNEL_SRCS:.c=.o) src/kernel/gdt_flush.o src/kernel/sys/idt_load.o src/kernel/sys/interrupt.o
 
 .PHONY: all clean run
