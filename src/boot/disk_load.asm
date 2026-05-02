@@ -1,25 +1,30 @@
 disk_load:
     pusha
-    push dx
+    ; Save parameters
+    ; bx = buffer
+    ; dh = sectors
+    ; dl = drive
+    ; cl = start sector
 
-    mov ah, 0x02 ; BIOS read sector function
-    mov al, dh   ; Read DH sectors
-    mov ch, 0x00 ; Select cylinder 0
-    ; dh (head) and cl (sector) are expected to be set by the caller
-    ; but we need to set head to 0 and preserve dl (drive)
-    mov dh, 0x00 
-
-    int 0x13     ; BIOS interrupt
-
-    jc disk_error ; Jump if error (carry flag set)
-
+    push dx ; push sectors and drive
+    
+    mov ah, 0x02    ; BIOS read
+    mov al, dh      ; sectors
+    mov ch, 0x00    ; cylinder
+    mov dh, 0x00    ; head
+    ; cl and dl are already set
+    
+    int 0x13
+    jc .error
+    
     pop dx
-    cmp dh, al    ; if AL (sectors read) != DH (sectors expected)
-    jne disk_error
+    cmp al, dh
+    jne .error
+    
     popa
     ret
 
-disk_error:
+.error:
     mov bx, DISK_ERROR_MSG
     call print_string
     jmp $

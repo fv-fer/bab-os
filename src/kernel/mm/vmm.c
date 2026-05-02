@@ -33,6 +33,7 @@ void page_fault_handler(registers_t *r) {
 
 void vmm_init() {
     /* 1. Allocate a page for the kernel directory */
+    /* Since we are in higher half, we must use a physical address or rely on identity mapping */
     kernel_directory = (page_directory_t*)pmm_alloc_pages(0);
     memset(kernel_directory, 0, sizeof(page_directory_t));
     current_directory = kernel_directory;
@@ -43,8 +44,15 @@ void vmm_init() {
         vmm_map_page(i, i, PAGE_PRESENT | PAGE_RW);
     }
 
-    /* 3. Identity map the VBE Framebuffer */
+    /* 3. Map the kernel to the Higher Half (0xC0000000 -> 0x00000000) */
+    /* We map 8MB here as well to be safe and match the identity map */
+    for (uint32_t i = 0; i < 0x800000; i += PAGE_SIZE) {
+        vmm_map_page(0xC0000000 + i, i, PAGE_PRESENT | PAGE_RW);
+    }
+
+    /* 4. Identity map the VBE Framebuffer */
     /* We need to get the framebuffer address from the VBE info at 0x8000 */
+    /* NOTE: In higher half, 0x8000 is still valid because of identity mapping */
     struct vbe_mode_info* vbe = (struct vbe_mode_info*) 0x8000;
     uint32_t fb_start = vbe->framebuffer;
     uint32_t fb_size = vbe->height * vbe->pitch;
@@ -53,20 +61,20 @@ void vmm_init() {
         vmm_map_page(fb_start + i, fb_start + i, PAGE_PRESENT | PAGE_RW);
     }
 
-    /* 4. Register Page Fault Handler */
+    /* 5. Register Page Fault Handler */
     register_interrupt_handler(14, page_fault_handler);
 
-    /* 5. Switch to the new directory and Enable Paging */
+    /* 6. Switch to the new directory */
     vmm_switch_page_directory(kernel_directory);
 
-    uint32_t cr0;
-    __asm__ volatile("mov %%cr0, %0" : "=r"(cr0));
-    cr0 |= 0x80000000; // Enable PG bit
-    __asm__ volatile("mov %0, %%cr0" :: "r"(cr0));
+    /* Paging is already enabled by kernel_entry.asm */
 }
 
 void vmm_switch_page_directory(page_directory_t* dir) {
     current_directory = dir;
+    /* We need the physical address of the directory */
+    /* In our simple kernel, for now, we assume physical == virtual for the directory itself */
+    /* because it's allocated in the identity-mapped region (first 8MB) */
     __asm__ volatile("mov %0, %%cr3" :: "r"(dir));
 }
 
@@ -84,8 +92,6 @@ void vmm_map_page(uint32_t virtual, uint32_t physical, uint32_t flags) {
         *pde = (uint32_t)pt | flags | PAGE_PRESENT;
     } else {
         /* Page table is present, but it's just a physical address in the PDE */
-        /* In this basic kernel, physical == virtual for the page tables themselves */
-        /* because we identity mapped everything where we allocate them. */
         pt = (page_table_t*)(*pde & 0xFFFFF000);
     }
 
