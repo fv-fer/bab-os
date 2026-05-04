@@ -34,50 +34,32 @@ void kmain() {
     keyboard_init();
 
     struct vbe_mode_info* vbe = (struct vbe_mode_info*) 0x8000;
-
-    // Initialize the terminal with VBE info
     terminal_initialize(vbe);
 
-    terminal_writestring("Bab-OS Kernel Booting...\n");
-    terminal_writestring("GDT, IDT, and ISRs Initialized.\n");
-    terminal_writestring("Buddy System PMM Initialized (128MB).\n");
-    terminal_writestring("Higher-Half VMM Initialized.\n");
-    terminal_writestring("Kernel Heap Initialized at 0xD0000000.\n");
+    printf("Bab-OS Kernel Booting...\n");
+    printf("GDT, IDT, and ISRs Initialized.\n");
+    printf("PMM: Buddy System 128MB at %x\n", 0x400000);
+    printf("VMM: Higher-Half Kernel at %x\n", 0xC0000000);
+    printf("Heap: Initialized at %x\n", KHEAP_START);
     
-    // Test kmalloc
-    terminal_writestring("Testing kmalloc...\n");
+    // Test kmalloc and printf
+    printf("Testing kmalloc...\n");
     char* test_str = (char*)kmalloc(64);
-    terminal_writestring("Allocated 64 bytes for string at: ");
-    terminal_writehex((uint32_t)test_str);
-    terminal_writestring("\n");
-
-    // Write to heap
-    const char* message = "Hello from the Kernel Heap!";
-    memcpy(test_str, message, 28);
-
-    // Read from heap
-    terminal_writestring("Read back from heap: \"");
-    terminal_writestring(test_str);
-    terminal_writestring("\"\n");
-
+    strcpy(test_str, "Dynamic Message on Heap!");
+    printf("Read from heap: \"%s\" at %x\n", test_str, test_str);
     kfree(test_str);
-    terminal_writestring("Freed string pointer.\n");
 
     void* ptr4 = kmalloc_a(128);
-    terminal_writestring("Allocated aligned 128 bytes at: ");
-    terminal_writehex((uint32_t)ptr4);
-    terminal_writestring(" (should end in 000)\n");
+    printf("Aligned Allocation: %x (ends in 000)\n", ptr4);
+    kfree(ptr4);
 
-    terminal_writestring("\nSystem Ready.\n> ");
+    printf("\nSystem Ready. Try typing on your keyboard!\n> ");
 
     // Enable interrupts
     __asm__ volatile("sti");
 
     while(1) {
-        /* Every 5 seconds, print a heartbeat message */
         sleep(5000);
-        terminal_writestring("\n[System Heartbeat] 5 seconds have passed...\n> ");
+        printf("\n[System Heartbeat] %d seconds have passed...\n> ", timer_get_ticks() / 100);
     }
 }
-
-

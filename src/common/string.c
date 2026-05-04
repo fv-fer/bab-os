@@ -19,3 +19,9 @@ size_t strlen(const char* str) {
     while (str[len]) len++;
     return len;
 }
+
+char* strcpy(char* dest, const char* src) {
+    char* d = dest;
+    while ((*d++ = *src++));
+    return dest;
+}

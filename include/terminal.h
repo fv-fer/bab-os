@@ -11,5 +11,8 @@ void terminal_write(const char* data, uint32_t size);
 void terminal_writestring(const char* data);
 void terminal_writehex(uint32_t n);
 void terminal_clear();
+void terminal_scroll();
+
+void printf(const char* format, ...);
 
 #endif
