@@ -2,11 +2,19 @@
 #include <isr.h>
 #include <io.h>
 #include <terminal.h>
+#include <task.h>
 
 uint32_t tick = 0;
 
-static void timer_callback(registers_t *regs) {
+static uint32_t timer_callback(registers_t *regs) {
     tick++;
+    
+    /* Preemptive scheduling every 10 ticks (100ms) */
+    if (tick % 10 == 0) {
+        return schedule((uint32_t)regs);
+    }
+    
+    return (uint32_t)regs;
 }
 
 void timer_init(uint32_t frequency) {

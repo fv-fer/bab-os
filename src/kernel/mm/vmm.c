@@ -5,11 +5,11 @@
 #include <vbe.h>
 
 static page_directory_t* kernel_directory = NULL;
-static page_directory_t* current_directory = NULL;
+page_directory_t* current_directory = NULL;
 
-extern void isr_handler(registers_t *r);
+extern uint32_t isr_handler(registers_t *r);
 
-void page_fault_handler(registers_t *r) {
+uint32_t page_fault_handler(registers_t *r) {
     uint32_t faulting_address;
     __asm__ volatile("mov %%cr2, %0" : "=r" (faulting_address));
 
@@ -29,6 +29,7 @@ void page_fault_handler(registers_t *r) {
     
     terminal_writestring("\nKernel Halted!\n");
     for (;;);
+    return (uint32_t)r;
 }
 
 void vmm_init() {

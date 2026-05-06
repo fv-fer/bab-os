@@ -92,7 +92,7 @@ unsigned char kbd_us_shift[128] = {
     0,	/* All other keys are undefined */
 };
 
-static void keyboard_callback(registers_t *regs) {
+static uint32_t keyboard_callback(registers_t *regs) {
     uint8_t scancode = inb(KBD_DATA_PORT);
 
     /* Handle Key Releases */
@@ -100,7 +100,7 @@ static void keyboard_callback(registers_t *regs) {
         uint8_t released_scancode = scancode & 0x7F;
         if (released_scancode == 0x2A) left_shift_pressed = false;
         if (released_scancode == 0x36) right_shift_pressed = false;
-        return;
+        return (uint32_t)regs;
     }
 
     /* Handle Key Presses */
@@ -138,6 +138,7 @@ static void keyboard_callback(registers_t *regs) {
             break;
         }
     }
+    return (uint32_t)regs;
 }
 
 void keyboard_init() {

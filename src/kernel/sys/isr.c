@@ -159,20 +159,29 @@ char *exception_messages[] = {
     "Reserved"
 };
 
-void isr_handler(registers_t *r) {
+uint32_t isr_handler(registers_t *r) {
+    if (interrupt_handlers[r->int_no] != 0) {
+        isr_t handler = interrupt_handlers[r->int_no];
+        return handler(r);
+    }
+
     if (r->int_no < 32) {
         terminal_writestring("\nEXCEPTION: ");
         terminal_writestring(exception_messages[r->int_no]);
         terminal_writestring("\nKernel Halted!\n");
         for (;;);
     }
+    return (uint32_t)r;
 }
 
-void irq_handler(registers_t *r) {
+uint32_t irq_handler(registers_t *r) {
+    uint32_t ret = (uint32_t)r;
     if (interrupt_handlers[r->int_no] != 0) {
         isr_t handler = interrupt_handlers[r->int_no];
-        handler(r);
+        ret = handler(r);
     }
 
     pic_send_eoi(r->int_no - 32);
+
+    return ret;
 }

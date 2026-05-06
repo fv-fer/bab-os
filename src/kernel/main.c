@@ -10,9 +10,24 @@
 #include <kheap.h>
 #include <vbe.h>
 #include <string.h>
+#include <task.h>
 
 /* Defined in pmm.c but not in header to keep it clean */
 extern void pmm_add_region(uint32_t start, uint32_t length);
+
+void task_a() {
+    while(1) {
+        printf("A");
+        for (volatile int i = 0; i < 1000000; i++);
+    }
+}
+
+void task_b() {
+    while(1) {
+        printf("B");
+        for (volatile int i = 0; i < 1000000; i++);
+    }
+}
 
 void kmain() {
     idt_init();
@@ -37,29 +52,18 @@ void kmain() {
     terminal_initialize(vbe);
 
     printf("Bab-OS Kernel Booting...\n");
-    printf("GDT, IDT, and ISRs Initialized.\n");
-    printf("PMM: Buddy System 128MB at %x\n", 0x400000);
-    printf("VMM: Higher-Half Kernel at %x\n", 0xC0000000);
-    printf("Heap: Initialized at %x\n", KHEAP_START);
     
-    // Test kmalloc and printf
-    printf("Testing kmalloc...\n");
-    char* test_str = (char*)kmalloc(64);
-    strcpy(test_str, "Dynamic Message on Heap!");
-    printf("Read from heap: \"%s\" at %x\n", test_str, test_str);
-    kfree(test_str);
+    /* 5. Initialize Multitasking */
+    task_init();
+    task_create(task_a);
+    task_create(task_b);
 
-    void* ptr4 = kmalloc_a(128);
-    printf("Aligned Allocation: %x (ends in 000)\n", ptr4);
-    kfree(ptr4);
-
-    printf("\nSystem Ready. Try typing on your keyboard!\n> ");
+    printf("System Ready. Multitasking active!\n> ");
 
     // Enable interrupts
     __asm__ volatile("sti");
 
     while(1) {
-        sleep(5000);
-        printf("\n[System Heartbeat] %d seconds have passed...\n> ", timer_get_ticks() / 100);
+        __asm__ volatile("hlt");
     }
 }

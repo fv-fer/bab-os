@@ -11,10 +11,10 @@ typedef struct registers {
 } registers_t;
 
 void isr_install();
-void isr_handler(registers_t *r);
-void irq_handler(registers_t *r);
+uint32_t isr_handler(registers_t *r);
+uint32_t irq_handler(registers_t *r);
 
-typedef void (*isr_t)(registers_t *);
+typedef uint32_t (*isr_t)(registers_t *);
 void register_interrupt_handler(uint8_t n, isr_t handler);
 
 #endif

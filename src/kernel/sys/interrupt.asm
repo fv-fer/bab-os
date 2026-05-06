@@ -96,7 +96,7 @@ isr_common_stub:
 
     push esp
     call isr_handler
-    add esp, 4
+    mov esp, eax    ; Switch stack if needed (for multitasking)
 
     pop eax
     mov ds, ax
@@ -123,7 +123,7 @@ irq_common_stub:
 
     push esp
     call irq_handler
-    add esp, 4
+    mov esp, eax    ; Switch stack if needed (for multitasking)
 
     pop eax
     mov ds, ax
