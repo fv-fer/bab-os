@@ -11,21 +11,29 @@
 #include <vbe.h>
 #include <string.h>
 #include <task.h>
+#include <mutex.h>
 
 /* Defined in pmm.c but not in header to keep it clean */
 extern void pmm_add_region(uint32_t start, uint32_t length);
 
+mutex_t test_mutex;
+int shared_counter = 0;
+
 void task_a() {
     while(1) {
-        printf("A");
-        for (volatile int i = 0; i < 1000000; i++);
+        mutex_lock(&test_mutex);
+        printf("[A:%d]", ++shared_counter);
+        mutex_unlock(&test_mutex);
+        for (volatile int i = 0; i < 2000000; i++);
     }
 }
 
 void task_b() {
     while(1) {
-        printf("B");
-        for (volatile int i = 0; i < 1000000; i++);
+        mutex_lock(&test_mutex);
+        printf("[B:%d]", ++shared_counter);
+        mutex_unlock(&test_mutex);
+        for (volatile int i = 0; i < 2000000; i++);
     }
 }
 
@@ -53,6 +61,8 @@ void kmain() {
 
     printf("Bab-OS Kernel Booting...\n");
     
+    mutex_init(&test_mutex);
+
     /* 5. Initialize Multitasking */
     task_init();
     task_create(task_a);
