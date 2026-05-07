@@ -33,6 +33,7 @@ void task_b() {
         mutex_lock(&test_mutex);
         printf("[B:%d]", ++shared_counter);
         mutex_unlock(&test_mutex);
+        sleep(500); // Sleep for 500ms
         for (volatile int i = 0; i < 2000000; i++);
     }
 }

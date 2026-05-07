@@ -18,6 +18,7 @@ void task_init() {
     running_task->kstack = 0;
     running_task->page_directory = current_directory;
     running_task->state = TASK_RUNNING;
+    running_task->sleep_ticks = 0;
     running_task->next = NULL;
     
     ready_queue = running_task;
@@ -57,6 +58,7 @@ void task_create(void (*entry_point)()) {
     new_task->esp = (uint32_t)ptr;
     new_task->page_directory = current_directory;
     new_task->state = TASK_READY;
+    new_task->sleep_ticks = 0;
     new_task->next = NULL;
     
     /* Add to ready queue */
@@ -80,7 +82,7 @@ uint32_t schedule(uint32_t current_esp) {
     do {
         running_task = running_task->next;
         if (!running_task) running_task = ready_queue;
-    } while (running_task->state == TASK_BLOCKED);
+    } while (running_task->state == TASK_BLOCKED || running_task->state == TASK_SLEEPING);
     
     running_task->state = TASK_RUNNING;
     return running_task->esp;
@@ -93,4 +95,17 @@ task_t* task_get_current() {
 void task_yield() {
     /* Trigger the timer interrupt (IRQ0) to call the scheduler */
     __asm__ volatile("int $0x20");
+}
+
+void tasks_update_sleep_ticks() {
+    task_t *tmp = ready_queue;
+    while (tmp) {
+        if (tmp->state == TASK_SLEEPING && tmp->sleep_ticks > 0) {
+            tmp->sleep_ticks--;
+            if (tmp->sleep_ticks == 0) {
+                tmp->state = TASK_READY;
+            }
+        }
+        tmp = tmp->next;
+    }
 }

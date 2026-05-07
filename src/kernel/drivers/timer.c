@@ -8,6 +8,7 @@ uint32_t tick = 0;
 
 static uint32_t timer_callback(registers_t *regs) {
     tick++;
+    tasks_update_sleep_ticks();
     return schedule((uint32_t)regs);
 }
 
@@ -36,13 +37,14 @@ uint32_t timer_get_ticks() {
 }
 
 void sleep(uint32_t ms) {
-    uint32_t start_ticks = tick;
     /* Since timer is 100Hz, 1 tick = 10ms */
     uint32_t ticks_to_wait = ms / 10;
+    if (ticks_to_wait == 0) ticks_to_wait = 1;
     
-    while(tick < (start_ticks + ticks_to_wait)) {
-        /* Busy wait until the required number of ticks has passed */
-        /* We use 'hlt' to save power/CPU cycles while waiting */
-        __asm__ volatile("hlt");
+    task_t *current = task_get_current();
+    if (current) {
+        current->sleep_ticks = ticks_to_wait;
+        current->state = TASK_SLEEPING;
+        task_yield();
     }
 }
