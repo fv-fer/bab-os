@@ -9,6 +9,12 @@ SECTIONS
     _kernel_virtual_start = .;
     _kernel_physical_start = . - 0xC0000000;
 
+    /* Boot section: contains paging structures that must not be zeroed */
+    .boot : AT(ADDR(.boot) - 0xC0000000)
+    {
+        *(.boot)
+    }
+
     .text : AT(ADDR(.text) - 0xC0000000)
     {
         *(.text)
@@ -26,8 +32,10 @@ SECTIONS
 
     .bss : AT(ADDR(.bss) - 0xC0000000)
     {
+        _bss_start = .;
         *(.bss)
         *(COMMON)
+        _bss_end = .;
     }
 
     _kernel_virtual_end = .;

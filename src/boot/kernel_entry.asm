@@ -67,12 +67,21 @@ _start:
 
 .higher_half:
     ; Now we are running in the higher half!
-    ; We can safely call kmain.
     
+    ; 7. Zero the BSS section correctly
+    extern _bss_start
+    extern _bss_end
+    mov edi, _bss_start
+    mov ecx, _bss_end
+    sub ecx, edi
+    xor eax, eax
+    rep stosb
+
+    ; We can safely call kmain.
     call kmain
     jmp $
 
-section .bss
+section .boot
 align 4096
 boot_page_directory:
     resb 4096
