@@ -25,7 +25,7 @@ KERNEL_SRCS = src/kernel/main.c src/kernel/font.c src/kernel/terminal.c src/kern
               src/kernel/sys/idt.c src/kernel/sys/isr.c src/common/string.c src/common/stdlib.c \
               src/kernel/drivers/keyboard.c src/kernel/drivers/timer.c src/kernel/drivers/pic.c \
               src/kernel/mm/pmm.c src/kernel/mm/vmm.c src/kernel/mm/kheap.c src/kernel/task.c \
-              src/kernel/mutex.c
+              src/kernel/mutex.c src/kernel/cond.c
 KERNEL_OBJS = $(KERNEL_SRCS:.c=.o) src/kernel/gdt_flush.o src/kernel/sys/idt_load.o src/kernel/sys/interrupt.o
 
 .PHONY: all clean run
