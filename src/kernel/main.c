@@ -11,50 +11,68 @@
 #include <vbe.h>
 #include <string.h>
 #include <task.h>
-#include <mutex.h>
-#include <cond.h>
+#include <monitor.h>
 
 /* Defined in pmm.c but not in header to keep it clean */
 extern void pmm_add_region(uint32_t start, uint32_t length);
 
-mutex_t buffer_mutex;
-cond_t buffer_cond;
-int buffer_count = 0;
+#define BUFFER_SIZE 5
+#define COND_NOT_EMPTY 0
+#define COND_NOT_FULL  1
+
+monitor_t buffer_monitor;
+int buffer[BUFFER_SIZE];
+int count = 0;
+int head = 0;
+int tail = 0;
 
 void producer() {
-    int item = 0;
+    int item = 100;
     while(1) {
-        sleep(500); // Produce every 500ms
+        sleep(300); // Produce quickly
 
-        mutex_lock(&buffer_mutex);
-        item = item + 10;
-        buffer_count = buffer_count + 10;
-        printf("[P: produced %d, count %d]", item, buffer_count);
-        cond_signal(&buffer_cond);
-        mutex_unlock(&buffer_mutex);
+        monitor_enter(&buffer_monitor);
+        
+        while (count == BUFFER_SIZE) {
+            printf("[P: buffer full, waiting...]");
+            monitor_wait(&buffer_monitor, COND_NOT_FULL);
+        }
+
+        buffer[tail] = item++;
+        tail = (tail + 1) % BUFFER_SIZE;
+        count++;
+        
+        printf("[P: produced, count %d]", count);
+        
+        monitor_notify(&buffer_monitor, COND_NOT_EMPTY);
+        monitor_exit(&buffer_monitor);
     }
 }
 
 void consumer() {
     while(1) {
-        mutex_lock(&buffer_mutex);
+        sleep(800); // Consume slowly to force buffer to fill up
 
-        while (buffer_count == 0) {
-            printf("[C: empty, waiting...]");
-            cond_wait(&buffer_cond, &buffer_mutex);
+        monitor_enter(&buffer_monitor);
+
+        while (count == 0) {
+            printf("[C: buffer empty, waiting...]");
+            monitor_wait(&buffer_monitor, COND_NOT_EMPTY);
         }
 
-        buffer_count--;
-        printf("[C: consumed, count %d]", buffer_count);
+        int item = buffer[head];
+        head = (head + 1) % BUFFER_SIZE;
+        count--;
 
-        mutex_unlock(&buffer_mutex);
+        printf("[C: consumed %d, count %d]", item, count);
 
-        // Simulate processing time
-        sleep(200);
+        monitor_notify(&buffer_monitor, COND_NOT_FULL);
+        monitor_exit(&buffer_monitor);
     }
 }
 
 void kmain() {
+    gdt_init();
     idt_init();
     isr_install();
 
@@ -78,8 +96,7 @@ void kmain() {
 
     printf("Bab-OS Kernel Booting...\n");
 
-    mutex_init(&buffer_mutex);
-    cond_init(&buffer_cond);
+    monitor_init(&buffer_monitor);
 
     /* 5. Initialize Multitasking */
     task_init();

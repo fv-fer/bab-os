@@ -14,11 +14,7 @@ void mutex_lock(mutex_t *m) {
     
     task_t *current = task_get_current();
     
-    if (!m->locked) {
-        m->locked = 1;
-        m->owner = current;
-        sti();
-    } else {
+    while (m->locked) {
         /* Add current task to waiters */
         current->state = TASK_BLOCKED;
         current->wait_next = NULL;
@@ -32,25 +28,26 @@ void mutex_lock(mutex_t *m) {
         }
         
         task_yield();
-        /* When we return here, it means we were unblocked and scheduled */
-        sti();
+        /* When we return here, we must re-disable interrupts because yield enabled them */
+        cli();
     }
+
+    m->locked = 1;
+    m->owner = current;
+    sti();
 }
 
 void mutex_unlock(mutex_t *m) {
     cli();
     
+    m->locked = 0;
+    m->owner = NULL;
+
     if (m->waiters) {
         /* Unblock the first waiter */
         task_t *waiter = m->waiters;
         m->waiters = waiter->wait_next;
-        
         waiter->state = TASK_READY;
-        m->owner = waiter;
-        /* Stay locked, owner is now the unblocked task */
-    } else {
-        m->locked = 0;
-        m->owner = NULL;
     }
     
     sti();
