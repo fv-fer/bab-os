@@ -71,6 +71,18 @@ void consumer() {
     }
 }
 
+void shell_task() {
+    printf("Shell started. Type something!\n> ");
+    while(1) {
+        char c = getchar();
+        /* The keyboard driver already echoes characters to the terminal.
+           We just handle the new line prompt here. */
+        if (c == '\n') {
+            printf("> ");
+        }
+    }
+}
+
 void kmain() {
     gdt_init();
     idt_init();
@@ -89,12 +101,13 @@ void kmain() {
     kheap_init();
 
     timer_init(100); // 100 Hz
-    keyboard_init();
 
-    struct vbe_mode_info* vbe = (struct vbe_mode_info*) 0x8000;
+    struct vbe_mode_info* vbe = (struct vbe_mode_info*) 0xC0000500;
     terminal_initialize(vbe);
 
     printf("Bab-OS Kernel Booting...\n");
+
+    keyboard_init();
 
     monitor_init(&buffer_monitor);
 
@@ -102,8 +115,9 @@ void kmain() {
     task_init();
     task_create(producer);
     task_create(consumer);
+    task_create(shell_task);
 
-    printf("System Ready. Multitasking active!\n> ");
+    printf("System Ready. Multitasking active!\n");
 
     // Enable interrupts
     __asm__ volatile("sti");

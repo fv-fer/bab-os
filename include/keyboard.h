@@ -2,5 +2,6 @@
 #define KEYBOARD_H
 
 void keyboard_init();
+char getchar();
 
 #endif

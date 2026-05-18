@@ -1,7 +1,7 @@
 [bits 16]
 [org 0x7e00]
 
-VBE_INFO_BLOCK equ 0x8000 ; Address to store VBE information
+VBE_INFO_BLOCK equ 0x0500 ; Address to store VBE information
 
 stage2_start:
     mov [BOOT_DRIVE], dl ; Save boot drive from dl

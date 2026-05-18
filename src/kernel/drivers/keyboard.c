@@ -4,8 +4,17 @@
 #include <keyboard.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <monitor.h>
 
 #define KBD_DATA_PORT 0x60
+#define KBD_BUFFER_SIZE 256
+
+/* Monitor for keyboard synchronization */
+static monitor_t kbd_monitor;
+static char kbd_buffer[KBD_BUFFER_SIZE];
+static int kbd_head = 0;
+static int kbd_tail = 0;
+static int kbd_count = 0;
 
 /* State variables */
 static bool left_shift_pressed = false;
@@ -133,6 +142,19 @@ static uint32_t keyboard_callback(registers_t *regs) {
             }
 
             if (c > 0) {
+                /* Push to circular buffer */
+                monitor_enter(&kbd_monitor);
+                if (kbd_count < KBD_BUFFER_SIZE) {
+                    kbd_buffer[kbd_tail] = c;
+                    kbd_tail = (kbd_tail + 1) % KBD_BUFFER_SIZE;
+                    kbd_count++;
+                    monitor_notify(&kbd_monitor, 0);
+                }
+                monitor_exit(&kbd_monitor);
+                
+                /* Echo to screen is handled by putchar here, 
+                   but usually we'd do it in a shell or getchar caller.
+                   Let's keep it here for now so we see feedback. */
                 terminal_putchar(c);
             }
             break;
@@ -141,6 +163,22 @@ static uint32_t keyboard_callback(registers_t *regs) {
     return (uint32_t)regs;
 }
 
+char getchar() {
+    monitor_enter(&kbd_monitor);
+    
+    while (kbd_count == 0) {
+        monitor_wait(&kbd_monitor, 0);
+    }
+    
+    char c = kbd_buffer[kbd_head];
+    kbd_head = (kbd_head + 1) % KBD_BUFFER_SIZE;
+    kbd_count--;
+    
+    monitor_exit(&kbd_monitor);
+    return c;
+}
+
 void keyboard_init() {
+    monitor_init(&kbd_monitor);
     register_interrupt_handler(33, keyboard_callback);
 }

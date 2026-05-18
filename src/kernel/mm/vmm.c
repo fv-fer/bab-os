@@ -52,9 +52,9 @@ void vmm_init() {
     }
 
     /* 4. Identity map the VBE Framebuffer */
-    /* We need to get the framebuffer address from the VBE info at 0x8000 */
-    /* NOTE: In higher half, 0x8000 is still valid because of identity mapping */
-    struct vbe_mode_info* vbe = (struct vbe_mode_info*) 0x8000;
+    /* We need to get the framebuffer address from the VBE info at 0xC0000500 */
+    /* NOTE: In higher half, this is accessible because of the mapping in step 3 */
+    struct vbe_mode_info* vbe = (struct vbe_mode_info*) 0xC0000500;
     uint32_t fb_start = vbe->framebuffer;
     uint32_t fb_size = vbe->height * vbe->pitch;
 

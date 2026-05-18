@@ -34,8 +34,9 @@ all: os-image.bin
 
 os-image.bin: boot.bin stage2.bin kernel.bin
 	cat $^ > $@
-	# Pad image to at least 64 sectors to avoid BIOS read errors
-	truncate -s 32768 $@
+	# Pad image to 128KB to ensure all requested sectors are physically present
+	truncate -s 131072 $@
+	@echo "Kernel size: $$(stat -c%s kernel.bin) bytes"
 
 boot.bin: src/boot/stage1.asm
 	$(AS) $< -f bin -o $@
