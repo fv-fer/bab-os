@@ -1,0 +1,22 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "OS Debug (All Stages)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/boot.elf",
+            "miDebuggerServerAddress": "localhost:1234",
+            "miDebuggerPath": "/usr/bin/gdb-multiarch",
+            "MIMode": "gdb",
+            "cwd": "${workspaceFolder}",
+            "setupCommands": [
+                { "text": "set architecture i386" },
+                { "text": "set confirm off" },
+                { "text": "symbol-file ${workspaceFolder}/boot.elf" },
+                { "text": "add-symbol-file ${workspaceFolder}/stage2.elf 0x7E00" },
+                { "text": "add-symbol-file ${workspaceFolder}/kernel.elf" }
+            ]
+        }
+    ]
+}
