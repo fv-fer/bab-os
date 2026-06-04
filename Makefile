@@ -25,29 +25,39 @@ KERNEL_SRCS = src/kernel/main.c src/kernel/font.c src/kernel/terminal.c src/kern
               src/kernel/sys/idt.c src/kernel/sys/isr.c src/common/string.c src/common/stdlib.c \
               src/kernel/drivers/keyboard.c src/kernel/drivers/timer.c src/kernel/drivers/pic.c \
               src/kernel/mm/pmm.c src/kernel/mm/vmm.c src/kernel/mm/kheap.c src/kernel/task.c \
-              src/kernel/mutex.c src/kernel/cond.c src/kernel/monitor.c
+              src/kernel/mutex.c src/kernel/cond.c src/kernel/monitor.c \
+              src/kernel/vfs.c src/kernel/initrd.c
 KERNEL_OBJS = $(KERNEL_SRCS:.c=.o) src/kernel/gdt_flush.o src/kernel/sys/idt_load.o src/kernel/sys/interrupt.o
 
 .PHONY: all clean run
 
 all: os-image.bin
 
-os-image.bin: boot.bin stage2.bin kernel.bin
-	cat $^ > $@
-	# Pad image to 128KB to ensure all requested sectors are physically present
-	truncate -s 131072 $@
+os-image.bin: boot.bin stage2.bin kernel.bin initrd.img
+	cat boot.bin stage2.bin kernel.bin > $@
+	# Pad to 256KB so initrd starts at a fixed LBA (sector 513)
+	truncate -s 262144 $@
+	cat initrd.img >> $@
+	# Pad image to 512KB total
+	truncate -s 524288 $@
 	@echo "Kernel size: $$(stat -c%s kernel.bin) bytes"
+	@echo "Initrd size: $$(stat -c%s initrd.img) bytes"
 
 boot.bin: src/boot/stage1.asm
 	$(AS) $< -f bin -o $@
 
-stage2.bin: src/boot/stage2.asm
-	$(AS) $< -f bin -o $@
+stage2.bin: src/boot/stage2.asm kernel.bin initrd.img
+	$(AS) $< -f bin -o $@ \
+		-D KERNEL_SECTORS=$$(expr \( $$(stat -c%s kernel.bin) + 511 \) / 512) \
+		-D INITRD_SECTORS=$$(expr \( $$(stat -c%s initrd.img) + 511 \) / 512)
 	# Ensure stage2 is exactly 1024 bytes (2 sectors)
 	truncate -s 1024 $@
 
 kernel.bin: kernel_entry.o $(KERNEL_OBJS)
 	$(LD) -o $@ $(LDFLAGS) $^
+
+initrd.img: tools/mkinitrd.py README.md
+	python3 tools/mkinitrd.py $@ README.md
 
 kernel_entry.o: src/boot/kernel_entry.asm
 	$(AS) $< -f elf -o $@
@@ -64,8 +74,30 @@ src/kernel/sys/interrupt.o: src/kernel/sys/interrupt.asm
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
+
+# Stage 1 ELF (Linked at 0x7C00)
+boot.elf: src/boot/stage1.asm
+	$(AS) $< -f elf32 -g -F dwarf -o boot_sym.o
+	$(LD) boot_sym.o -m elf_i386 -Ttext 0x7C00 -o $@
+
+# Stage 2 ELF (Linked at 0x7E00)
+stage2.elf: src/boot/stage2.asm
+	$(AS) $< -f elf32 -g -F dwarf -o stage2_sym.o \
+		-D KERNEL_SECTORS=$$(expr \( $$(stat -c%s kernel.bin) + 511 \) / 512) \
+		-D INITRD_SECTORS=$$(expr \( $$(stat -c%s initrd.img) + 511 \) / 512)
+	$(LD) stage2_sym.o -m elf_i386 -Ttext 0x7E00 -o $@	
+
+kernel.elf: kernel_entry.o $(KERNEL_OBJS)
+	$(LD) -o $@ -T linker.ld $^
+
 clean:
-	rm -rf *.bin *.o src/kernel/*.o src/boot/*.o src/kernel/sys/*.o src/common/*.o src/kernel/drivers/*.o src/kernel/mm/*.o
+	rm -rf *.bin *.o *.elf *.img src/kernel/*.o src/boot/*.o src/kernel/sys/*.o src/common/*.o src/kernel/drivers/*.o src/kernel/mm/*.o
 
 run: os-image.bin
 	qemu-system-i386 -drive format=raw,file=os-image.bin
+
+
+debug: os-image.bin kernel.elf boot.elf stage2.elf
+	# -s: Starts GDB server on port 1234
+	# -S: Freeze CPU at startup
+	qemu-system-i386 -s -S -drive format=raw,file=os-image.bin -vga std -serial stdio

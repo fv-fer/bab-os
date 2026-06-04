@@ -5,13 +5,16 @@ KERNEL_VIRTUAL_BASE equ 0xC0000000
 ; Page Directory index for the higher half (0xC0000000 >> 22 = 768)
 PDE_INDEX equ (KERNEL_VIRTUAL_BASE >> 22)
 
-section .text
+section .boot
 [extern kmain]
 [global _start]
 
 _start:
-    ; At this point, we are at physical address 0x1000.
-    ; Symbols are linked at 0xC0001000.
+    ; At this point, we are at physical address 0x10000.
+    ; Symbols are linked at 0xC0010000.
+
+    ; Diagnostic: write a white 'K' at top-left in VGA text mode
+    mov word [0xB8000], 0x0F4B
     
     ; 1. Zero the boot page directory
     ; We must use physical addresses here.
@@ -81,7 +84,6 @@ _start:
     call kmain
     jmp $
 
-section .boot
 align 4096
 boot_page_directory:
     resb 4096

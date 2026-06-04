@@ -1,5 +1,7 @@
 [bits 16]
-[org 0x7c00]
+%ifidn __OUTPUT_FORMAT__, bin
+    org 0x7c00
+%endif
 
 STAGE2_OFFSET equ 0x7e00
 
@@ -14,7 +16,7 @@ start:
 
     mov [BOOT_DRIVE], dl ; BIOS stores boot drive in dl
 
-    mov bp, 0x90000      ; Set up the stack at a safer location
+    mov bp, 0x7000       ; Set up the stack below Stage 2
     mov sp, bp
 
     mov bx, MSG_STAGE1

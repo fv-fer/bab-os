@@ -2,9 +2,9 @@ ENTRY(_start)
 
 SECTIONS
 {
-    /* The kernel will be loaded at 0x1000 physical, 
-       but linked to 3GB + 0x1000 virtual. */
-    . = 0xC0001000;
+    /* The kernel will be loaded at 0x10000 physical, 
+       but linked to 3GB + 0x10000 virtual. */
+    . = 0xC0010000;
 
     _kernel_virtual_start = .;
     _kernel_physical_start = . - 0xC0000000;

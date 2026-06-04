@@ -12,9 +12,14 @@
 #include <string.h>
 #include <task.h>
 #include <monitor.h>
+#include <vfs.h>
+#include <initrd.h>
 
 /* Defined in pmm.c but not in header to keep it clean */
 extern void pmm_add_region(uint32_t start, uint32_t length);
+
+/* Defined in linker script */
+extern uint32_t _kernel_virtual_end;
 
 #define BUFFER_SIZE 5
 #define COND_NOT_EMPTY 0
@@ -72,13 +77,58 @@ void consumer() {
 }
 
 void shell_task() {
-    printf("Shell started. Type something!\n> ");
+    char cmd_buffer[128];
+    int cmd_idx = 0;
+
+    printf("Shell started. Type 'ls', 'cat <file>', or just type characters!\n> ");
     while(1) {
         char c = getchar();
-        /* The keyboard driver already echoes characters to the terminal.
-           We just handle the new line prompt here. */
+        
         if (c == '\n') {
+            cmd_buffer[cmd_idx] = '\0';
+            
+            if (strcmp(cmd_buffer, "ls") == 0) {
+                int i = 0;
+                struct vfs_dirent *node = 0;
+                while ((node = vfs_readdir(fs_root, i)) != 0) {
+                    printf("%s  ", node->name);
+                    vfs_node_t *fsnode = vfs_finddir(fs_root, node->name);
+                    if ((fsnode->flags & 0x7) == VFS_DIRECTORY)
+                        printf("(dir)\n");
+                    else
+                        printf("(file, size %d)\n", fsnode->length);
+                    i++;
+                }
+            } else if (strncmp(cmd_buffer, "cat ", 4) == 0) {
+                char *filename = cmd_buffer + 4;
+                vfs_node_t *fsnode = vfs_finddir(fs_root, filename);
+                if (fsnode) {
+                    char *buf = (char*)kmalloc(fsnode->length + 1);
+                    uint32_t sz = vfs_read(fsnode, 0, fsnode->length, (uint8_t*)buf);
+                    buf[sz] = '\0';
+                    printf("%s\n", buf);
+                    kfree(buf);
+                } else {
+                    printf("File not found: %s\n", filename);
+                }
+            } else if (cmd_idx > 0) {
+                printf("Unknown command: %s\n", cmd_buffer);
+            }
+            
             printf("> ");
+            cmd_idx = 0;
+        } else if (c == '\b') {
+            if (cmd_idx > 0) {
+                cmd_idx--;
+                /* terminal_putchar('\b') followed by space and '\b' 
+                   would handle visual delete, but terminal_putchar 
+                   doesn't support backspace yet. 
+                   For now, just decrement buffer index. */
+            }
+        } else {
+            if (cmd_idx < 127) {
+                cmd_buffer[cmd_idx++] = c;
+            }
         }
     }
 }
@@ -106,6 +156,12 @@ void kmain() {
     terminal_initialize(vbe);
 
     printf("Bab-OS Kernel Booting...\n");
+
+    /* Initialize VFS and Initrd */
+    /* We've padded the image so that initrd starts at physical 0x40000.
+       In higher-half, this is 0xC0040000. */
+    fs_root = initialise_initrd(0xC0040000);
+    printf("VFS Initialized. Root at %x\n", fs_root);
 
     keyboard_init();
 

@@ -79,10 +79,15 @@ uint32_t schedule(uint32_t current_esp) {
     }
     
     /* Pick next task (Round Robin) */
+    task_t *start_task = running_task;
     do {
         running_task = running_task->next;
         if (!running_task) running_task = ready_queue;
-    } while (running_task->state == TASK_BLOCKED || running_task->state == TASK_SLEEPING);
+        
+        if (running_task->state == TASK_READY || running_task->state == TASK_RUNNING) {
+            break;
+        }
+    } while (running_task != start_task);
     
     running_task->state = TASK_RUNNING;
     return running_task->esp;
